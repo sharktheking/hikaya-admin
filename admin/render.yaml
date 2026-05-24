@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: hikaya-admin
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --workers=2 --timeout=120
+    envVars:
+      - key: APPWRITE_BASE
+        value: https://fra.cloud.appwrite.io
+      - key: APPWRITE_PROJECT
+        value: 6a10ffc6002688e9bfb2
+      - key: APPWRITE_KEY
+        value: standard_4a7169cbb118359f7a269af914bc309ca9c9acf248101be7cdd520abfeebe2e390af35567de33c48a21aa318b79e8fc0a1b84d343ef3ba52d34842382fc2fe7bfb61b46e3170d94fcbda08524a7f9a12fc31438fb7a2961273668137485078d545d345e6c724ffcc4c594c789dee70e33565f545a29b6c37d1761d24d8727285
+      - key: BUCKET_ID
+        value: products
+      - key: DATABASE_ID
+        value: hikaya_store
+      - key: FCM_SERVER_KEY
+        sync: false
