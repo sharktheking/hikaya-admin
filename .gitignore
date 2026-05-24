@@ -1,3 +1,7 @@
 /*
-!/admin
-!.gitignore
+!/.gitignore
+!/index.html
+!/server.py
+!/render.yaml
+!/requirements.txt
+!/serve.bat
