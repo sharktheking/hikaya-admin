@@ -271,7 +271,7 @@ function setStatus(s) {
 }
 
 function renderCurrent() {
-  const fn = {dashboard:renderDashboard, products:()=>renderTable('products'), categories:()=>renderTable('categories'), orders:renderOrders, kanban:renderKanban, analytics:renderAnalytics, splash:loadSettings, settings:loadSettings, fcm:loadFCM};
+  const fn = {dashboard:renderDashboard, products:()=>renderTable('products'), categories:()=>renderTable('categories'), orders:()=>renderTable('orders'), kanban:renderKanban, analytics:renderAnalytics, splash:loadSettings, settings:loadSettings, fcm:loadFCM};
   if (fn[currentTab]) fn[currentTab]();
 }
 
@@ -280,14 +280,13 @@ let rtInterval;
 function startRealtimeSync(){
   stopRealtimeSync();
   rtInterval=setInterval(()=>{
-    if(currentTab==='orders'){syncOrders();renderOrders();}
+    if(currentTab==='orders'){syncOrders();renderTable('orders');}
     else if(currentTab==='dashboard'){loadAll();}
   },5000);
 }
 function stopRealtimeSync(){if(rtInterval){clearInterval(rtInterval);rtInterval=null;}}
-// Override switchTab to start/stop sync
-const _origSwitchTab=switchTab;
-switchTab=function(tab){_origSwitchTab(tab);if(tab==='orders'||tab==='dashboard')startRealtimeSync();else stopRealtimeSync();};
+const _orig=switchTab;
+switchTab=function(t){_orig(t);(t==='orders'||t==='dashboard')?startRealtimeSync():stopRealtimeSync();};
 
 // ── Helpers ──
 function sv(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
