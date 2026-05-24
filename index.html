@@ -409,10 +409,6 @@ function renderDashboard() {
       <div class="dash-card"><h3>📦 الأقسام</h3><div id="dashCats">${c.map(x=>`<div class="list-item"><span>${x.icon||'📚'} <b>${esc(x.name)}</b></span><span class="tag">${p.filter(p=>p.category===x.name).length} منتج</span></div>`).join('')||'<div class="empty-state">لا توجد أقسام</div>'}</div></div>
     </div>`;
   renderCharts(o);
-  const statusClass=s=>{
-    const m={'قيد المعالجة':'s-pending','قيد التوصيل':'s-delivering','تم التوصيل':'s-delivered','ملغي':'s-cancelled'};
-    return m[s]||'s-pending';
-  };
 }
 
 function statusClass(s) {
