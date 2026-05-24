@@ -271,9 +271,27 @@ function setStatus(s) {
 }
 
 function renderCurrent() {
-  const fn = {dashboard:renderDashboard, products:()=>renderTable('products'), categories:()=>renderTable('categories'), orders:()=>renderTable('orders'), kanban:renderKanban, analytics:renderAnalytics, splash:loadSettings, settings:loadSettings, fcm:loadFCM};
+  const fn = {dashboard:renderDashboard, products:()=>renderTable('products'), categories:()=>renderTable('categories'), orders:renderOrders, kanban:renderKanban, analytics:renderAnalytics, splash:loadSettings, settings:loadSettings, fcm:loadFCM};
   if (fn[currentTab]) fn[currentTab]();
 }
+
+// ── Real-time Sync ──
+let rtInterval;
+function startRealtimeSync(){
+  stopRealtimeSync();
+  rtInterval=setInterval(()=>{
+    if(currentTab==='orders'){syncOrders();renderOrders();}
+    else if(currentTab==='dashboard'){loadAll();}
+  },5000);
+}
+function stopRealtimeSync(){if(rtInterval){clearInterval(rtInterval);rtInterval=null;}}
+// Override switchTab to start/stop sync
+const _origSwitchTab=switchTab;
+switchTab=function(tab){_origSwitchTab(tab);if(tab==='orders'||tab==='dashboard')startRealtimeSync();else stopRealtimeSync();};
+
+// ── Helpers ──
+function sv(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // ── Navigation ──
 function switchTab(tab) {
@@ -655,22 +673,25 @@ const SETTINGS = [
   {k:'splash_badge_text_color',l:'لون نص الشارة',t:'color',g:'الألوان'},
   {k:'primary_color',l:'اللون الأساسي',t:'color',g:'الألوان العامة'},
   {k:'secondary_color',l:'اللون الثانوي',t:'color',g:'الألوان العامة'},
-  {k:'whatsapp_number',l:'رقم واتساب',t:'text',g:'التواصل'},
-  {k:'instagram_url',l:'إنستغرام',t:'text',g:'التواصل'},
-  {k:'facebook_url',l:'فيسبوك',t:'text',g:'التواصل'},
-  {k:'telegram_url',l:'تيليغرام',t:'text',g:'التواصل'},
-  {k:'tiktok_url',l:'تيك توك',t:'text',g:'التواصل'},
+  {k:'whatsapp_number',l:'رقم واتساب (رمز الدولة+رقم)',t:'text',g:'التواصل'},
+  {k:'instagram_url',l:'إنستغرام (معرف فقط)',t:'text',g:'التواصل'},
+  {k:'facebook_url',l:'فيسبوك (معرف فقط)',t:'text',g:'التواصل'},
+  {k:'telegram_url',l:'تيليغرام (معرف فقط)',t:'text',g:'التواصل'},
+  {k:'tiktok_url',l:'تيك توك (معرف فقط)',t:'text',g:'التواصل'},
+  {k:'youtube_url',l:'يوتيوب (رابط القناة)',t:'text',g:'التواصل'},
+  {k:'snapchat_url',l:'سناب شات (معرف)',t:'text',g:'التواصل'},
+  {k:'x_url',l:'X (تويتر) (معرف)',t:'text',g:'التواصل'},
   {k:'contact_phone',l:'هاتف التواصل',t:'text',g:'جهات الاتصال'},
   {k:'contact_email',l:'البريد الإلكتروني',t:'email',g:'جهات الاتصال'},
   {k:'about_us',l:'نبذة عن المتجر',t:'textarea',g:'عن المتجر'},
 ];
 
 const SPLASH_EXTRA = [
-  {k:'splash_anim_duration',l:'مدة الحركة (مللي)',t:'number',g:'الحركة',p:'700'},
-  {k:'splash_anim_delay',l:'تأخير بين الكلمات',t:'number',g:'الحركة',p:'150'},
-  {k:'splash_font_size',l:'حجم الخط الرئيسي (بكسل)',t:'number',g:'الخط',p:'72'},
-  {k:'splash_subtitle_size',l:'حجم النص الفرعي',t:'number',g:'الخط',p:'14'},
-  {k:'splash_badge_size',l:'حجم الشارة',t:'number',g:'الخط',p:'10'},
+  {k:'splash_anim_duration',l:'مدة الحركة',t:'range',g:'الحركة',p:'700',min:200,max:2000,step:50,unit:'مللي'},
+  {k:'splash_anim_delay',l:'تأخير بين العناصر',t:'range',g:'الحركة',p:'150',min:0,max:500,step:10,unit:'مللي'},
+  {k:'splash_font_size',l:'حجم الخط الرئيسي',t:'range',g:'الخط',p:'72',min:24,max:120,step:2,unit:'بكسل'},
+  {k:'splash_subtitle_size',l:'حجم النص الفرعي',t:'range',g:'الخط',p:'14',min:8,max:32,step:1,unit:'بكسل'},
+  {k:'splash_badge_size',l:'حجم الشارة',t:'range',g:'الخط',p:'10',min:6,max:24,step:1,unit:'بكسل'},
 ];
 
 async function loadSettings(){
@@ -700,6 +721,7 @@ function renderSettingsForm(){
         const inp=`s-${f.k}`,idInp=`s-${f.k}-id`;
         if(f.t==='color')return `<div class="full"><div class="form-group"><label>${f.l}</label><div class="color-pick"><input type="color" id="${inp}" value="${/^#[0-9a-f]{6}$/i.test(val)?val:'#E0A800'}" onchange="document.getElementById('${inp}-t').value=this.value;updateSplashPreview()"><input type="text" id="${inp}-t" value="${esc(val)}" oninput="document.getElementById('${inp}').value=this.value;updateSplashPreview()" style="flex:1"><input type="hidden" id="${idInp}" value="${docId}"></div></div></div>`;
         if(f.t==='textarea')return `<div class="full"><div class="form-group"><label>${f.l}</label><textarea id="${inp}" rows="3">${esc(val)}</textarea><input type="hidden" id="${idInp}" value="${docId}"></div></div>`;
+        if(f.t==='range'){const uv=esc(val||f.p||'700');const un=f.unit?' '+f.unit:'';return `<div class="form-group"><label>${f.l}</label><div style="display:flex;gap:6px;align-items:center"><input type="range" id="${inp}" value="${uv}" min="${f.min||0}" max="${f.max||1000}" step="${f.step||10}" oninput="sv('${inp}-v',this.value)"><span id="${inp}-v" style="min-width:50px;font-size:12px;color:var(--gold2);font-weight:600">${uv}${un}</span></div><input type="hidden" id="${idInp}" value="${docId}"></div>`;}
         return `<div class="form-group"><label>${f.l}</label><input type="${f.t}" id="${inp}" value="${esc(val)}" placeholder="${f.p||''}"><input type="hidden" id="${idInp}" value="${docId}"></div>`;
       }).join('')}`).join('')}</div></div>
       <div style="width:280px;position:sticky;top:60px;align-self:flex-start">
@@ -766,6 +788,7 @@ function renderSplashForm(){
         const s=allData.settings.find(x=>x.key===f.k),val=s?s.value:'',docId=s?s.id:'';
         const inp=`s-${f.k}`,idInp=`s-${f.k}-id`;
         if(f.t==='color')return `<div class="full"><div class="form-group"><label>${f.l}</label><div class="color-pick"><input type="color" id="${inp}" value="${/^#[0-9a-f]{6}$/i.test(val)?val:'#E0A800'}" onchange="document.getElementById('${inp}-t').value=this.value;updateAnimPreview()"><input type="text" id="${inp}-t" value="${esc(val)}" oninput="document.getElementById('${inp}').value=this.value;updateAnimPreview()" style="flex:1"><input type="hidden" id="${idInp}" value="${docId}"></div></div></div>`;
+        if(f.t==='range'){const uv=esc(val||f.p||'700');return `<div class="form-group"><label>${f.l}</label><div style="display:flex;gap:6px;align-items:center"><input type="range" id="${inp}" value="${uv}" min="${f.min||0}" max="${f.max||1000}" step="${f.step||10}" oninput="sv('${inp}-v',this.value);updateAnimPreview()"><span id="${inp}-v" style="min-width:50px;font-size:12px;color:var(--gold2);font-weight:600">${uv}</span></div><input type="hidden" id="${idInp}" value="${docId}"></div>`;}
         return `<div class="form-group"><label>${f.l}</label><input type="${f.t}" id="${inp}" value="${esc(val)}" oninput="updateAnimPreview()" placeholder="${f.p||''}"><input type="hidden" id="${idInp}" value="${docId}"></div>`;
       }).join('')}`).join('')}</div></div>
       <div style="width:320px;position:sticky;top:60px;align-self:flex-start">

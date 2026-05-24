@@ -398,11 +398,36 @@ def ensure_missing_settings():
         except Exception as e:
             print(f'Create {key} error: {e}')
 
+def ensure_new_social_settings():
+    """Add new social media settings if missing."""
+    social_defaults = [
+        ('youtube_url', ''),
+        ('snapchat_url', ''),
+        ('x_url', ''),
+    ]
+    try:
+        r = aw('GET', f'/v1/databases/{DATABASE_ID}/collections/settings/documents')
+        existing = {d.get('key') for d in (r.json().get('documents') or [])}
+    except:
+        existing = set()
+    for key, default in social_defaults:
+        if key in existing:
+            continue
+        try:
+            aw('POST', f'/v1/databases/{DATABASE_ID}/collections/settings/documents', _json=True, json={
+                'documentId': 'unique()', 'data': {'key': key, 'value': default},
+                'permissions': ['read("any")', 'write("any")']
+            })
+            print(f'Created social setting: {key}')
+        except Exception as e:
+            print(f'Create {key} error: {e}')
+
 with app.app_context():
     init_settings()
     ensure_order_user_id()
     ensure_order_attrs()
     ensure_missing_settings()
+    ensure_new_social_settings()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
